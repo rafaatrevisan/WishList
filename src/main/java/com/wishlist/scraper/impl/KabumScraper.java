@@ -11,7 +11,6 @@ import java.util.List;
 @Component
 public class KabumScraper extends BaseScraper implements PriceScraper {
 
-    // Seletores com fallback para caso HTML ou CSS mudem
     private static final List<String> PRICE_SELECTORS = List.of(
             "h4.text-4xl.text-secondary-500.font-bold",
             "h4.text-secondary-500",
@@ -26,6 +25,12 @@ public class KabumScraper extends BaseScraper implements PriceScraper {
             "img"
     );
 
+    private static final List<String> NAME_SELECTORS = List.of(
+            "h1.text-sm.desktop\\:text-xl.text-black-800.font-bold",
+            "h1[class*='font-bold']",
+            "h1"
+    );
+
     @Override
     public boolean supports(String url) {
         return url.matches(".*kabum\\..*");
@@ -34,7 +39,6 @@ public class KabumScraper extends BaseScraper implements PriceScraper {
     @Override
     public BigDecimal extractPrice(String url) {
         Document doc = getDocument(url);
-
         return extractPriceWithFallback(
                 doc,
                 PRICE_SELECTORS,
@@ -46,5 +50,15 @@ public class KabumScraper extends BaseScraper implements PriceScraper {
     public String extractImage(String url) {
         Document doc = getDocument(url);
         return extractImageWithFallback(doc, IMAGE_SELECTORS);
+    }
+
+    @Override
+    public String extractName(String url) {
+        Document doc = getDocument(url);
+        return extractNameWithFallback(
+                doc,
+                NAME_SELECTORS,
+                "Nome do produto não encontrado na Kabum"
+        );
     }
 }

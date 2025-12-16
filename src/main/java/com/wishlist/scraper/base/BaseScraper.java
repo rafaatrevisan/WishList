@@ -21,7 +21,6 @@ public abstract class BaseScraper {
         }
     }
 
-    // PREÇO
     protected BigDecimal extractPriceWithFallback(
             Document doc,
             List<String> selectors,
@@ -36,27 +35,30 @@ public abstract class BaseScraper {
         return parsePrice(rawPrice);
     }
 
-    protected String findFirstText(Document doc, List<String> selectors) {
-        for (String selector : selectors) {
-            Elements elements = doc.select(selector);
-            if (!elements.isEmpty()) {
-                return elements.first().text();
-            }
-        }
-        return null;
-    }
-
     protected BigDecimal parsePrice(String raw) {
         return new BigDecimal(
                 raw.replace("R$", "")
-                        .replace("\u00A0", "") // &nbsp;
+                        .replace("\u00A0", "")
                         .replace(".", "")
                         .replace(",", ".")
                         .trim()
         );
     }
 
-    // IMAGEM
+    protected String extractNameWithFallback(
+            Document doc,
+            List<String> selectors,
+            String errorMessage
+    ) {
+        String name = findFirstText(doc, selectors);
+
+        if (name == null || name.isBlank()) {
+            throw new RuntimeException(errorMessage);
+        }
+
+        return name.trim();
+    }
+
     protected String extractImageWithFallback(
             Document doc,
             List<String> selectors
@@ -71,6 +73,19 @@ public abstract class BaseScraper {
 
                 if (src != null && !src.isBlank() && src.startsWith("http")) {
                     return src;
+                }
+            }
+        }
+        return null;
+    }
+
+    protected String findFirstText(Document doc, List<String> selectors) {
+        for (String selector : selectors) {
+            Elements elements = doc.select(selector);
+            if (!elements.isEmpty()) {
+                String text = elements.first().text();
+                if (text != null && !text.isBlank()) {
+                    return text;
                 }
             }
         }

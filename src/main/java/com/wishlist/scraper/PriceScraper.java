@@ -9,4 +9,6 @@ public interface PriceScraper {
     BigDecimal extractPrice(String url);
 
     String extractImage(String url);
+
+    String extractName(String url);
 }

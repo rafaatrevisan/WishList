@@ -32,43 +32,91 @@ public class ProdutoService {
         this.scraperFactory = scraperFactory;
     }
 
-    public List<Produto> listarPorLista(Long listaId) {
-        return produtoRepository.findByListaId(listaId);
-    }
-
+    /* CRIAÇÃO DE PRODUTO */
     public ProdutoResponseDTO adicionar(ProdutoRequestDTO dto) {
+
+        if (dto.getLink() == null || dto.getLink().isBlank()) {
+            throw new IllegalArgumentException("Link do produto é obrigatório");
+        }
 
         Lista lista = listaRepository.findById(dto.getListaId())
                 .orElseThrow(() -> new RuntimeException("Lista não encontrada"));
 
         Produto produto = new Produto();
-        produto.setNome(dto.getNome());
         produto.setLink(dto.getLink());
-        produto.setLoja(dto.getLoja());
-        produto.setPrecoAtual(dto.getPrecoAtual());
-        produto.setImagemUrl(dto.getImagemUrl());
         produto.setLista(lista);
+
+        boolean temScraper = hasScraper(dto.getLink());
+
+        if (temScraper) {
+            preencherComScraper(produto, dto);
+        } else {
+            validarCamposObrigatoriosSemScraper(dto);
+            preencherManual(produto, dto);
+        }
+
         produto.setUltimaAtualizacao(LocalDateTime.now());
 
         Produto salvo = produtoRepository.save(produto);
-
         return mapToResponseDTO(salvo);
     }
 
-
-    public void remover(Long produtoId) {
-        produtoRepository.deleteById(produtoId);
-    }
-
-    public BigDecimal totalDaLista(Long listaId) {
-        return produtoRepository.calcularTotalPorLista(listaId);
-    }
-
-    // ATUALIZAÇÃO MANUAL
-    public ProdutoResponseDTO atualizarPreco(
-            Long produtoId,
-            BigDecimal novoPreco
+    /* LÓGICA COM SCRAPER */
+    private void preencherComScraper(
+            Produto produto,
+            ProdutoRequestDTO dto
     ) {
+        PriceScraper scraper = scraperFactory.getScraper(dto.getLink());
+
+        if (dto.getNome() != null && !dto.getNome().isBlank()) {
+            produto.setNome(dto.getNome());
+        } else {
+            String nome = scraper.extractName(dto.getLink());
+            if (nome == null || nome.isBlank()) {
+                throw new RuntimeException("Não foi possível extrair o nome do produto");
+            }
+            produto.setNome(nome);
+        }
+        produto.setLoja(
+                dto.getLoja() != null
+                        ? dto.getLoja()
+                        : extractLoja(dto.getLink())
+        );
+        produto.setPrecoAtual(
+                dto.getPrecoAtual() != null
+                        ? dto.getPrecoAtual()
+                        : scraper.extractPrice(dto.getLink())
+        );
+        produto.setImagemUrl(
+                dto.getImagemUrl() != null
+                        ? dto.getImagemUrl()
+                        : scraper.extractImage(dto.getLink())
+        );
+    }
+
+    /* LÓGICA SEM SCRAPER */
+    private void validarCamposObrigatoriosSemScraper(ProdutoRequestDTO dto) {
+        if (dto.getNome() == null ||
+                dto.getLoja() == null ||
+                dto.getPrecoAtual() == null ||
+                dto.getImagemUrl() == null) {
+
+            throw new IllegalArgumentException(
+                    "Para lojas sem scraper, nome, loja, preço e imagem são obrigatórios"
+            );
+        }
+    }
+
+    private void preencherManual(Produto produto, ProdutoRequestDTO dto) {
+        produto.setNome(dto.getNome());
+        produto.setLoja(dto.getLoja());
+        produto.setPrecoAtual(dto.getPrecoAtual());
+        produto.setImagemUrl(dto.getImagemUrl());
+    }
+
+    /* ATUALIZAÇÕES */
+    public ProdutoResponseDTO atualizarPreco(Long produtoId, BigDecimal novoPreco) {
+
         Produto produto = produtoRepository.findById(produtoId)
                 .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
 
@@ -76,39 +124,32 @@ public class ProdutoService {
         produto.setUltimaAtualizacao(LocalDateTime.now());
 
         Produto salvo = produtoRepository.save(produto);
-
         return mapToResponseDTO(salvo);
     }
 
-    // ATUALIZAÇÃO AUTOMÁTICA COM SCRAPER
     public ProdutoResponseDTO atualizarPrecoAutomatico(Long produtoId) {
 
         Produto produto = produtoRepository.findById(produtoId)
                 .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
 
-        PriceScraper scraper =
-                scraperFactory.getScraper(produto.getLink());
+        PriceScraper scraper = scraperFactory.getScraper(produto.getLink());
 
-        BigDecimal novoPreco = scraper.extractPrice(produto.getLink());
-        String imagem = scraper.extractImage(produto.getLink());
+        produto.setPrecoAtual(scraper.extractPrice(produto.getLink()));
+        produto.setImagemUrl(scraper.extractImage(produto.getLink()));
 
-        produto.setPrecoAtual(novoPreco);
-        produto.setImagemUrl(imagem);
+        if (produto.getNome() == null || produto.getNome().isBlank()) {
+            produto.setNome(scraper.extractName(produto.getLink()));
+        }
+
         produto.setUltimaAtualizacao(LocalDateTime.now());
 
         Produto salvo = produtoRepository.save(produto);
-
         return mapToResponseDTO(salvo);
     }
 
     public List<ProdutoResponseDTO> atualizarPrecosDaLista(Long listaId) {
 
         List<Produto> produtos = produtoRepository.findByListaId(listaId);
-
-        if (produtos.isEmpty()) {
-            return List.of();
-        }
-
         List<ProdutoResponseDTO> atualizados = new ArrayList<>();
 
         for (Produto produto : produtos) {
@@ -116,14 +157,13 @@ public class ProdutoService {
                 PriceScraper scraper =
                         scraperFactory.getScraper(produto.getLink());
 
-                BigDecimal novoPreco =
-                        scraper.extractPrice(produto.getLink());
+                produto.setPrecoAtual(scraper.extractPrice(produto.getLink()));
+                produto.setImagemUrl(scraper.extractImage(produto.getLink()));
 
-                String imagem =
-                        scraper.extractImage(produto.getLink());
+                if (produto.getNome() == null || produto.getNome().isBlank()) {
+                    produto.setNome(scraper.extractName(produto.getLink()));
+                }
 
-                produto.setPrecoAtual(novoPreco);
-                produto.setImagemUrl(imagem);
                 produto.setUltimaAtualizacao(LocalDateTime.now());
 
                 Produto salvo = produtoRepository.save(produto);
@@ -140,6 +180,34 @@ public class ProdutoService {
         return atualizados;
     }
 
+    /* MÉTODOS AUXILIARES */
+    private boolean hasScraper(String link) {
+        try {
+            scraperFactory.getScraper(link);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private String extractLoja(String link) {
+        if (link.contains("amazon")) return "AMAZON";
+        if (link.contains("kabum")) return "KABUM";
+        if (link.contains("shopee")) return "SHOPEE";
+        return "DESCONHECIDA";
+    }
+
+    public List<Produto> listarPorLista(Long listaId) {
+        return produtoRepository.findByListaId(listaId);
+    }
+
+    public void remover(Long produtoId) {
+        produtoRepository.deleteById(produtoId);
+    }
+
+    public BigDecimal totalDaLista(Long listaId) {
+        return produtoRepository.calcularTotalPorLista(listaId);
+    }
 
     private ProdutoResponseDTO mapToResponseDTO(Produto produto) {
         ProdutoResponseDTO dto = new ProdutoResponseDTO();

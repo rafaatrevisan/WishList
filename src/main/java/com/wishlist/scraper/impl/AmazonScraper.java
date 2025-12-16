@@ -25,6 +25,13 @@ public class AmazonScraper extends BaseScraper implements PriceScraper {
             "img"
     );
 
+    private static final List<String> NAME_SELECTORS = List.of(
+            "#productTitle",
+            "h1#title span",
+            "h1 span",
+            "h1"
+    );
+
     @Override
     public boolean supports(String url) {
         return url.matches(".*amazon\\..*");
@@ -34,28 +41,23 @@ public class AmazonScraper extends BaseScraper implements PriceScraper {
     public BigDecimal extractPrice(String url) {
         Document doc = getDocument(url);
 
-        // Tentativa 1: preço completo (a-offscreen)
         String rawPrice = findFirstText(doc, List.of("span.a-price span.a-offscreen"));
         if (rawPrice != null) {
             return parsePrice(rawPrice);
         }
 
-        // Tentativa 2: montar preço manualmente
         Elements whole = doc.select("span.a-price-whole");
         Elements fraction = doc.select("span.a-price-fraction");
 
         if (!whole.isEmpty() && !fraction.isEmpty()) {
             String raw = "R$" +
-                    whole.first().text()
-                            .replace(".", "")
-                            .replace(",", "") +
+                    whole.first().text().replace(".", "").replace(",", "") +
                     "," +
                     fraction.first().text();
 
             return parsePrice(raw);
         }
 
-        // Tentativa 3: fallback genérico
         return extractPriceWithFallback(
                 doc,
                 PRICE_SELECTORS,
@@ -67,5 +69,15 @@ public class AmazonScraper extends BaseScraper implements PriceScraper {
     public String extractImage(String url) {
         Document doc = getDocument(url);
         return extractImageWithFallback(doc, IMAGE_SELECTORS);
+    }
+
+    @Override
+    public String extractName(String url) {
+        Document doc = getDocument(url);
+        return extractNameWithFallback(
+                doc,
+                NAME_SELECTORS,
+                "Nome do produto não encontrado na Amazon"
+        );
     }
 }
