@@ -64,4 +64,10 @@ public class ProdutoController {
         );
     }
 
+    @PostMapping("/listas/{listaId}/atualizar-precos")
+    public List<ProdutoResponseDTO> atualizarPrecosDaLista(
+            @PathVariable Long listaId
+    ) {
+        return produtoService.atualizarPrecosDaLista(listaId);
+    }
 }

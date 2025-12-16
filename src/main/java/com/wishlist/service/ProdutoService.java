@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -99,6 +100,46 @@ public class ProdutoService {
 
         return mapToResponseDTO(salvo);
     }
+
+    public List<ProdutoResponseDTO> atualizarPrecosDaLista(Long listaId) {
+
+        List<Produto> produtos = produtoRepository.findByListaId(listaId);
+
+        if (produtos.isEmpty()) {
+            return List.of();
+        }
+
+        List<ProdutoResponseDTO> atualizados = new ArrayList<>();
+
+        for (Produto produto : produtos) {
+            try {
+                PriceScraper scraper =
+                        scraperFactory.getScraper(produto.getLink());
+
+                BigDecimal novoPreco =
+                        scraper.extractPrice(produto.getLink());
+
+                String imagem =
+                        scraper.extractImage(produto.getLink());
+
+                produto.setPrecoAtual(novoPreco);
+                produto.setImagemUrl(imagem);
+                produto.setUltimaAtualizacao(LocalDateTime.now());
+
+                Produto salvo = produtoRepository.save(produto);
+                atualizados.add(mapToResponseDTO(salvo));
+
+            } catch (Exception e) {
+                System.err.println(
+                        "Erro ao atualizar produto ID " + produto.getId()
+                                + ": " + e.getMessage()
+                );
+            }
+        }
+
+        return atualizados;
+    }
+
 
     private ProdutoResponseDTO mapToResponseDTO(Produto produto) {
         ProdutoResponseDTO dto = new ProdutoResponseDTO();
