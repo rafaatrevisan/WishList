@@ -118,14 +118,28 @@ public class ProdutoService {
         produto.setImagemUrl(dto.getImagemUrl());
     }
 
-    public ProdutoResponseDTO atualizarPreco(Long produtoId, BigDecimal novoPreco) {
+    public ProdutoResponseDTO atualizarProduto(Long produtoId, ProdutoRequestDTO dto) {
 
         Produto produto = produtoRepository.findById(produtoId)
                 .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
 
-        salvarHistoricoPreco(produto, novoPreco);
+        if (dto.getNome() != null && !dto.getNome().isBlank()) {
+            produto.setNome(dto.getNome());
+        }
 
-        produto.setPrecoAtual(novoPreco);
+        if (dto.getImagemUrl() != null && !dto.getImagemUrl().isBlank()) {
+            produto.setImagemUrl(dto.getImagemUrl());
+        }
+
+        if (dto.getLoja() != null && !dto.getLoja().isBlank()) {
+            produto.setLoja(Loja.valueOf(dto.getLoja()));
+        }
+
+        if (dto.getPrecoAtual() != null) {
+            salvarHistoricoPreco(produto, dto.getPrecoAtual());
+            produto.setPrecoAtual(dto.getPrecoAtual());
+        }
+
         produto.setUltimaAtualizacao(LocalDateTime.now());
 
         Produto salvo = produtoRepository.save(produto);

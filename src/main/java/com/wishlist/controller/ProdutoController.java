@@ -5,6 +5,7 @@ import com.wishlist.model.dto.ProdutoResponseDTO;
 import com.wishlist.model.entity.Produto;
 import com.wishlist.service.ProdutoService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -43,14 +44,6 @@ public class ProdutoController {
         );
     }
 
-    @PutMapping("/produtos/{id}/atualizar-preco")
-    public ProdutoResponseDTO atualizarPreco(
-            @PathVariable Long id,
-            @RequestBody Map<String, BigDecimal> body
-    ) {
-        return produtoService.atualizarPreco(id, body.get("preco"));
-    }
-
     @PutMapping("/produtos/{id}/atualizar-preco-auto")
     public ProdutoResponseDTO atualizarPrecoAutomatico(@PathVariable Long id) {
         return produtoService.atualizarPrecoAutomatico(id);
@@ -69,5 +62,14 @@ public class ProdutoController {
             @PathVariable Long listaId
     ) {
         return produtoService.atualizarPrecosDaLista(listaId);
+    }
+
+    @PutMapping("/produtos/{id}")
+    public ResponseEntity<ProdutoResponseDTO> atualizarProduto(
+            @PathVariable Long id,
+            @RequestBody ProdutoRequestDTO dto
+    ) {
+        ProdutoResponseDTO response = produtoService.atualizarProduto(id, dto);
+        return ResponseEntity.ok(response);
     }
 }
