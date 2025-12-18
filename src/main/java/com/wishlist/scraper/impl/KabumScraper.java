@@ -1,5 +1,6 @@
 package com.wishlist.scraper.impl;
 
+import com.wishlist.model.enums.Loja;
 import com.wishlist.scraper.PriceScraper;
 import com.wishlist.scraper.base.BaseScraper;
 import org.jsoup.nodes.Document;
@@ -10,6 +11,11 @@ import java.util.List;
 
 @Component
 public class KabumScraper extends BaseScraper implements PriceScraper {
+
+    @Override
+    public Loja getLoja() {
+        return Loja.KABUM;
+    }
 
     private static final List<String> PRICE_SELECTORS = List.of(
             "h4.text-4xl.text-secondary-500.font-bold",

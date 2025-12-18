@@ -4,6 +4,7 @@ import com.wishlist.model.dto.ProdutoRequestDTO;
 import com.wishlist.model.dto.ProdutoResponseDTO;
 import com.wishlist.model.entity.Lista;
 import com.wishlist.model.entity.Produto;
+import com.wishlist.model.enums.Loja;
 import com.wishlist.repository.ListaRepository;
 import com.wishlist.repository.ProdutoRepository;
 import com.wishlist.scraper.PriceScraper;
@@ -32,7 +33,6 @@ public class ProdutoService {
         this.scraperFactory = scraperFactory;
     }
 
-    /* CRIAÇÃO DE PRODUTO */
     public ProdutoResponseDTO adicionar(ProdutoRequestDTO dto) {
 
         if (dto.getLink() == null || dto.getLink().isBlank()) {
@@ -46,13 +46,12 @@ public class ProdutoService {
         produto.setLink(dto.getLink());
         produto.setLista(lista);
 
-        boolean temScraper = hasScraper(dto.getLink());
-
-        if (temScraper) {
+        if (hasScraper(dto.getLink())) {
             preencherComScraper(produto, dto);
         } else {
             validarCamposObrigatoriosSemScraper(dto);
             preencherManual(produto, dto);
+            produto.setLoja(Loja.DESCONHECIDA);
         }
 
         produto.setUltimaAtualizacao(LocalDateTime.now());
@@ -61,12 +60,13 @@ public class ProdutoService {
         return mapToResponseDTO(salvo);
     }
 
-    /* LÓGICA COM SCRAPER */
     private void preencherComScraper(
             Produto produto,
             ProdutoRequestDTO dto
     ) {
         PriceScraper scraper = scraperFactory.getScraper(dto.getLink());
+
+        produto.setLoja(scraper.getLoja());
 
         if (dto.getNome() != null && !dto.getNome().isBlank()) {
             produto.setNome(dto.getNome());
@@ -77,16 +77,13 @@ public class ProdutoService {
             }
             produto.setNome(nome);
         }
-        produto.setLoja(
-                dto.getLoja() != null
-                        ? dto.getLoja()
-                        : extractLoja(dto.getLink())
-        );
+
         produto.setPrecoAtual(
                 dto.getPrecoAtual() != null
                         ? dto.getPrecoAtual()
                         : scraper.extractPrice(dto.getLink())
         );
+
         produto.setImagemUrl(
                 dto.getImagemUrl() != null
                         ? dto.getImagemUrl()
@@ -94,7 +91,6 @@ public class ProdutoService {
         );
     }
 
-    /* LÓGICA SEM SCRAPER */
     private void validarCamposObrigatoriosSemScraper(ProdutoRequestDTO dto) {
         if (dto.getNome() == null ||
                 dto.getLoja() == null ||
@@ -109,12 +105,11 @@ public class ProdutoService {
 
     private void preencherManual(Produto produto, ProdutoRequestDTO dto) {
         produto.setNome(dto.getNome());
-        produto.setLoja(dto.getLoja());
+        produto.setLoja(Loja.valueOf(dto.getLoja()));
         produto.setPrecoAtual(dto.getPrecoAtual());
         produto.setImagemUrl(dto.getImagemUrl());
     }
 
-    /* ATUALIZAÇÕES */
     public ProdutoResponseDTO atualizarPreco(Long produtoId, BigDecimal novoPreco) {
 
         Produto produto = produtoRepository.findById(produtoId)
@@ -154,8 +149,7 @@ public class ProdutoService {
 
         for (Produto produto : produtos) {
             try {
-                PriceScraper scraper =
-                        scraperFactory.getScraper(produto.getLink());
+                PriceScraper scraper = scraperFactory.getScraper(produto.getLink());
 
                 produto.setPrecoAtual(scraper.extractPrice(produto.getLink()));
                 produto.setImagemUrl(scraper.extractImage(produto.getLink()));
@@ -180,7 +174,19 @@ public class ProdutoService {
         return atualizados;
     }
 
-    /* MÉTODOS AUXILIARES */
+    public List<Produto> listarPorLista(Long listaId) {
+        return produtoRepository.findByListaId(listaId);
+    }
+
+    public BigDecimal totalDaLista(Long listaId) {
+        return produtoRepository.calcularTotalPorLista(listaId);
+    }
+
+    public void remover(Long produtoId) {
+        produtoRepository.deleteById(produtoId);
+    }
+
+    /* AUX */
     private boolean hasScraper(String link) {
         try {
             scraperFactory.getScraper(link);
@@ -190,31 +196,12 @@ public class ProdutoService {
         }
     }
 
-    private String extractLoja(String link) {
-        if (link.contains("amazon")) return "AMAZON";
-        if (link.contains("kabum")) return "KABUM";
-        if (link.contains("shopee")) return "SHOPEE";
-        return "DESCONHECIDA";
-    }
-
-    public List<Produto> listarPorLista(Long listaId) {
-        return produtoRepository.findByListaId(listaId);
-    }
-
-    public void remover(Long produtoId) {
-        produtoRepository.deleteById(produtoId);
-    }
-
-    public BigDecimal totalDaLista(Long listaId) {
-        return produtoRepository.calcularTotalPorLista(listaId);
-    }
-
     private ProdutoResponseDTO mapToResponseDTO(Produto produto) {
         ProdutoResponseDTO dto = new ProdutoResponseDTO();
         dto.setId(produto.getId());
         dto.setNome(produto.getNome());
         dto.setLink(produto.getLink());
-        dto.setLoja(produto.getLoja());
+        dto.setLoja(String.valueOf(produto.getLoja()));
         dto.setPrecoAtual(produto.getPrecoAtual());
         dto.setImagemUrl(produto.getImagemUrl());
         dto.setUltimaAtualizacao(produto.getUltimaAtualizacao());

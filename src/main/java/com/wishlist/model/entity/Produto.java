@@ -1,5 +1,6 @@
 package com.wishlist.model.entity;
 
+import com.wishlist.model.enums.Loja;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -24,7 +25,8 @@ public class Produto {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String link;
 
-    private String loja;
+    @Enumerated(EnumType.STRING)
+    private Loja loja;
 
     @Column(name = "preco_atual", precision = 10, scale = 2)
     private BigDecimal precoAtual;
