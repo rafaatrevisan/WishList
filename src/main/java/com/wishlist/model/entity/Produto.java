@@ -34,11 +34,19 @@ public class Produto {
     @Column(name = "imagem_url", columnDefinition = "TEXT")
     private String imagemUrl;
 
+    @Column(name = "data_criacao", nullable = false, updatable = false)
+    private LocalDateTime dataCriacao;
+
     @Column(name = "ultima_atualizacao")
     private LocalDateTime ultimaAtualizacao;
 
     @ManyToOne
     @JoinColumn(name = "lista_id", nullable = false)
     private Lista lista;
+
+    @PrePersist
+    public void prePersist() {
+        this.dataCriacao = LocalDateTime.now();
+    }
 
 }
