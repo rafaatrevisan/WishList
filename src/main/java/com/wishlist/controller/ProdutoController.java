@@ -57,6 +57,12 @@ public class ProdutoController {
         return ResponseEntity.ok(produtos);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ProdutoResponseDTO> buscarPorId(@PathVariable Long id) {
+        ProdutoResponseDTO produto = produtoService.buscarPorId(id);
+        return ResponseEntity.ok(produto);
+    }
+
     // ==================== ATUALIZAÇÕES DE PREÇO ====================
 
     @PutMapping("/{id}/atualizar-preco-automatico")

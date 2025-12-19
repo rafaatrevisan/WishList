@@ -1,5 +1,6 @@
 package com.wishlist.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -33,6 +34,7 @@ public class Lista {
     }
 
     @OneToMany(mappedBy = "lista", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnoreProperties("lista")
     private List<Produto> produtos;
 
 }

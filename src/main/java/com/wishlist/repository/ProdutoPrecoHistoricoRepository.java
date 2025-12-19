@@ -13,6 +13,10 @@ public interface ProdutoPrecoHistoricoRepository
     Optional<ProdutoPrecoHistorico>
     findTopByProdutoIdOrderByDataColetaDesc(Long produtoId);
 
+    boolean existsByProdutoId(Long produtoId);
+
+    void deleteByProdutoId(Long produtoId);
+
     List<ProdutoPrecoHistorico> findByProdutoIdAndDataColetaBetweenOrderByDataColetaAsc(
             Long produtoId,
             LocalDateTime inicio,

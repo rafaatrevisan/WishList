@@ -1,5 +1,6 @@
 package com.wishlist.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.wishlist.model.enums.Loja;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
@@ -40,8 +41,9 @@ public class Produto {
     @Column(name = "ultima_atualizacao")
     private LocalDateTime ultimaAtualizacao;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "lista_id", nullable = false)
+    @JsonIgnoreProperties("produtos")
     private Lista lista;
 
     @PrePersist

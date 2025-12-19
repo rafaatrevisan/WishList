@@ -12,6 +12,7 @@ import com.wishlist.scraper.PriceScraper;
 import com.wishlist.scraper.ScraperFactory;
 import com.wishlist.model.entity.ProdutoPrecoHistorico;
 import com.wishlist.repository.ProdutoPrecoHistoricoRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -252,10 +253,14 @@ public class ProdutoService {
             return;
         }
 
+        boolean existeHistorico =
+                produtoPrecoHistoricoRepository
+                        .existsByProdutoId(produto.getId());
+
         BigDecimal precoAtual = produto.getPrecoAtual();
 
-        // Se não tem preço atual OU se o preço mudou, salva no histórico
-        if (precoAtual == null || precoAtual.compareTo(novoPreco) != 0) {
+        // Salva se for o primeiro histórico OU se o preço mudou
+        if (!existeHistorico || precoAtual == null || precoAtual.compareTo(novoPreco) != 0) {
 
             ProdutoPrecoHistorico historico = new ProdutoPrecoHistorico();
             historico.setProduto(produto);
@@ -305,8 +310,17 @@ public class ProdutoService {
         return produtoRepository.calcularTotalPorLista(listaId);
     }
 
+    @Transactional
     public void remover(Long produtoId) {
+        produtoPrecoHistoricoRepository.deleteByProdutoId(produtoId);
         produtoRepository.deleteById(produtoId);
+    }
+
+    public ProdutoResponseDTO buscarPorId(Long id) {
+        Produto produto = produtoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
+
+        return mapToResponseDTO(produto);
     }
 
     /* AUX */
