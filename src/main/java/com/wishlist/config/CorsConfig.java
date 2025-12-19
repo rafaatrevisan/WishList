@@ -15,7 +15,7 @@ public class CorsConfig {
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
                         .allowedOrigins(
-                                "https://wishlist.netlify.app",
+                                "https://trevs-wishly.netlify.app",
                                 "http://localhost:4200"
                         )
                         .allowedMethods("*");
