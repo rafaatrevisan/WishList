@@ -13,6 +13,8 @@ import com.wishlist.scraper.ScraperFactory;
 import com.wishlist.model.entity.ProdutoPrecoHistorico;
 import com.wishlist.repository.ProdutoPrecoHistoricoRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -208,16 +210,35 @@ public class ProdutoService {
         return atualizados;
     }
 
-    // Método que usa Job para atualizar preço e imagem
+    // Métodos que usam Job para atualizar preço e imagem
     public void atualizarPrecosAutomaticamente() {
+        int pagina = 0;
+        int tamanhoLote = 20; // Processa 20 produtos por vez para poupar RAM
+        Page<Produto> paginaProdutos;
 
-        List<Produto> produtos = produtoRepository.findAll();
+        do {
+            // Busca apenas uma fatia dos dados
+            paginaProdutos = produtoRepository.findAll(PageRequest.of(pagina, tamanhoLote));
 
+            // Processa o lote atual
+            processarLote(paginaProdutos.getContent());
+
+            // Avança para a próxima página
+            pagina++;
+
+            //Garbage Collector
+            System.gc();
+
+        } while (paginaProdutos.hasNext());
+    }
+
+    @Transactional
+    protected void processarLote(List<Produto> produtos) {
         for (Produto produto : produtos) {
-
             try {
-                PriceScraper scraper = scraperFactory.getScraper(produto.getLink());
+                System.out.println("Processando produto: " + produto.getId());
 
+                PriceScraper scraper = scraperFactory.getScraper(produto.getLink());
                 BigDecimal novoPreco = scraper.extractPrice(produto.getLink());
 
                 salvarHistoricoPreco(produto, novoPreco);
@@ -235,14 +256,7 @@ public class ProdutoService {
                 produtoRepository.save(produto);
 
             } catch (Exception e) {
-                System.err.println(
-                        "[JOB] Falha ao atualizar produto ID "
-                                + produto.getId()
-                                + " | Loja: "
-                                + produto.getLoja()
-                                + " | Erro: "
-                                + e.getMessage()
-                );
+                System.err.println("[JOB] Erro no ID " + produto.getId() + ": " + e.getMessage());
             }
         }
     }
