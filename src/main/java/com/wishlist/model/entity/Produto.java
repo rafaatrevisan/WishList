@@ -5,6 +5,8 @@ import com.wishlist.model.enums.Loja;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+
 import lombok.*;
 
 @Entity
@@ -45,6 +47,9 @@ public class Produto {
     @JoinColumn(name = "lista_id", nullable = false)
     @JsonIgnoreProperties("produtos")
     private Lista lista;
+
+    @OneToMany(mappedBy = "produto", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProdutoPrecoHistorico> historicos;
 
     @PrePersist
     public void prePersist() {
